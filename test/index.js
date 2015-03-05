@@ -53,6 +53,7 @@ it('returns an error on wrong scheme', function (done) {
         server.inject(request, function (res) {
 
             expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.equal("Basic");
             done();
         });
     });
@@ -123,6 +124,7 @@ it('returns an error on bad password', function (done) {
         server.inject(request, function (res) {
 
             expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.equal("Basic");
             done();
         });
     });
@@ -210,6 +212,7 @@ it('returns an error on missing username', function (done) {
 
             expect(res.result).to.exist();
             expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.contain("Basic");
             done();
         });
     });
@@ -254,6 +257,7 @@ it('returns an error on unknown user', function (done) {
 
             expect(res.result).to.exist();
             expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.contain("Basic");
             done();
         });
     });
@@ -416,6 +420,7 @@ it('should ask for credentials if server has one default strategy', function (do
 
                 expect(res.result).to.exist();
                 expect(res.statusCode).to.equal(401);
+                expect(res.headers['www-authenticate']).to.equal("Basic");
                 done();
             });
         });
@@ -508,6 +513,129 @@ it('passes non-error err in response', function (done) {
     });
 });
 
+it('returns an error on bad password but disable challenge', function (done) {
+
+    var server = new Hapi.Server();
+    server.connection();
+    server.register(require('../'), function (err) {
+
+        expect(err).to.not.exist();
+        server.auth.strategy('default', 'basic', 'required', { validateFunc: internals.user, disableBasicChallenge: true });
+        server.route({ method: 'POST', path: '/', handler: function (request, reply) { return reply('ok'); }, config: { auth: 'default' } });
+
+        var request = { method: 'POST', url: '/', headers: { authorization: internals.header('john', 'abcd') } };
+
+        server.inject(request, function (res) {
+
+            expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.not.exist();
+            done();
+        });
+    });
+});
+
+it('returns an error on unknown user but disable challenge', function (done) {
+
+    var server = new Hapi.Server();
+    server.connection();
+    server.register(require('../'), function (err) {
+
+        expect(err).to.not.exist();
+        server.auth.strategy('default', 'basic', 'required', { validateFunc: internals.user, disableBasicChallenge: true });
+        server.route({ method: 'POST', path: '/', handler: function (request, reply) { return reply('ok'); }, config: { auth: 'default' } });
+
+        var request = { method: 'POST', url: '/', headers: { authorization: internals.header('doe', '123:45') } };
+
+        server.inject(request, function (res) {
+
+            expect(res.result).to.exist();
+            expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.not.exist();
+            done();
+        });
+    });
+});
+
+it('returns an error on missing username but disable challenge', function (done) {
+
+    var server = new Hapi.Server();
+    server.connection();
+    server.register(require('../'), function (err) {
+
+        expect(err).to.not.exist();
+        server.auth.strategy('default', 'basic', 'required', { validateFunc: internals.user, disableBasicChallenge: true });
+        server.route({ method: 'POST', path: '/', handler: function (request, reply) { return reply('ok'); }, config: { auth: 'default' } });
+
+        var request = { method: 'POST', url: '/', headers: { authorization: internals.header('', '') } };
+
+        server.inject(request, function (res) {
+
+            expect(res.result).to.exist();
+            expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.contain("Basic");
+            done();
+        });
+    });
+});
+
+it('should reject with 401 with no challenge if server has one default strategy', function (done) {
+
+    var server = new Hapi.Server();
+    server.connection();
+    server.register(require('../'), function (err) {
+
+        expect(err).to.not.exist();
+
+        server.auth.strategy('default', 'basic', { validateFunc: internals.user, disableBasicChallenge: true });
+        server.route({
+            path: '/',
+            method: 'GET',
+            config: {
+                auth: 'default',
+                handler: function (request, reply) {
+
+                    return reply('ok');
+                }
+            }
+        });
+
+        var validOptions = { method: 'GET', url: '/', headers: { authorization: internals.header('john', '123:45') } };
+        server.inject(validOptions, function (res) {
+
+            expect(res.result).to.exist();
+            expect(res.statusCode).to.equal(200);
+
+            server.inject('/', function (res) {
+
+                expect(res.result).to.exist();
+                expect(res.statusCode).to.equal(401);
+                expect(res.headers['www-authenticate']).to.not.exist();
+                done();
+            });
+        });
+    });
+});
+
+it('returns an error on wrong scheme but disable challenge', function (done) {
+
+    var server = new Hapi.Server();
+    server.connection();
+    server.register(require('../'), function (err) {
+
+        expect(err).to.not.exist();
+        server.auth.strategy('default', 'basic', 'required', { validateFunc: internals.user, disableBasicChallenge: true });
+        server.route({ method: 'POST', path: '/', handler: function (request, reply) { return reply('ok'); }, config: { auth: 'default' } });
+
+        var request = { method: 'POST', url: '/', headers: { authorization: 'Steve something' } };
+
+        server.inject(request, function (res) {
+
+            expect(res.statusCode).to.equal(401);
+            expect(res.headers['www-authenticate']).to.not.exist();
+            done();
+        });
+    });
+});
 
 internals.header = function (username, password) {
 

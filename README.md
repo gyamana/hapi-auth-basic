@@ -16,6 +16,7 @@ Basic authentication requires validating a username and password combination. Th
           included when `isValid` is `true`, but there are cases when the application needs to know who tried to authenticate even when it fails
           (e.g. with authentication mode `'try'`).
 - `allowEmptyUsername` - (optional) if `true`, allows making requests with an empty username. Defaults to `false`.
+- `disableBasicChallenge` - (optional) if `true` disables the basic authentication challenge popup for browsers. Defaults to `false`.
 
 ```javascript
 var Bcrypt = require('bcrypt');
